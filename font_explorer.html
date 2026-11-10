@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="id" x-data="fontApp()" :class="{ 'dark': darkMode }">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TypoCraft - Font Previewer & Fancy Text Copier</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts Preconnect & Base Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.4);
+            border-radius: 9999px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: rgba(75, 85, 99, 0.5);
+        }
+        input[type=range] {
+            accent-color: #0284c7;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased min-h-screen flex flex-col md:flex-row font-sans">
+
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div x-show="sidebarOpen" 
+         @click="sidebarOpen = false" 
+         class="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-sm md:hidden"
+         style="display: none;"></div>
+
+    <!-- LEFT SIDEBAR: Settings & Navigation Controls Panel -->
+    <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
+           class="fixed inset-y-0 left-0 z-50 w-80 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-transform duration-300 ease-in-out shadow-xl md:shadow-none">
+        
+        <!-- Sidebar Brand Header -->
+        <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
+                    <i class="fa-solid fa-font text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-600 to-indigo-600 dark:from-sky-400 dark:to-indigo-400">
+                        TypoCraft
+                    </h1>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Font Preview & Text Copier</p>
+                </div>
+            </div>
+            
+            <button @click="sidebarOpen = false" class="md:hidden text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Sidebar Scrollable Settings Body -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-5 text-xs font-medium">
+            
+            <!-- Mode Switcher Tabs -->
+            <div class="space-y-1.5">
+                <label class="block text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Mode Preview</label>
+                <div class="grid grid-cols-2 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <button @click="activeTab = 'google'" 
+                            :class="activeTab === 'google' ? 'bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-300 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
+                            class="py-2 rounded-lg text-center transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-globe text-xs"></i>
+                        <span>Google Fonts</span>
+                    </button>
+                    <button @click="activeTab = 'unicode'" 
+                            :class="activeTab === 'unicode' ? 'bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-300 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
+                            class="py-2 rounded-lg text-center transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+                        <span>Unicode Fancy</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Custom Input Sentence -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-center">
+                    <label class="block text-slate-500 dark:text-slate-400 font-semibold">Teks Kalimat Kamu:</label>
+                    <button x-show="customText.length > 0" @click="customText = ''" class="text-[10px] text-sky-600 dark:text-sky-400 hover:underline">Hapus</button>
+                </div>
+                <textarea x-model="customText" 
+                          rows="3"
+                          placeholder="Ketik kata/kalimat di sini..." 
+                          class="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-800 dark:text-slate-100 text-sm transition resize-y shadow-inner"></textarea>
+                
+                <!-- Quick Sentence Presets -->
+                <div class="flex flex-wrap gap-1 pt-1">
+                    <button @click="customText = 'Tulisan Cantik & Aesthetic 2026'" class="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-sky-50 dark:hover:bg-sky-950/50 rounded text-[10px] text-slate-600 dark:text-slate-400">Aesthetic</button>
+                    <button @click="customText = 'Gamer & Bio Status Cool'" class="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-sky-50 dark:hover:bg-sky-950/50 rounded text-[10px] text-slate-600 dark:text-slate-400">Bio Status</button>
+                    <button @click="customText = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'" class="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-sky-50 dark:hover:bg-sky-950/50 rounded text-[10px] text-slate-600 dark:text-slate-400">Kapital</button>
+                </div>
+            </div>
+
+            <!-- Typography Adjustments (Only for Google Web Fonts) -->
+            <div x-show="activeTab === 'google'" class="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <span class="block text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Pengaturan Tipografi</span>
+                
+                <!-- Size -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-slate-500 dark:text-slate-400">
+                        <span>Ukuran Font</span>
+                        <span class="font-bold text-sky-600 dark:text-sky-400" x-text="fontSize + 'px'"></span>
+                    </div>
+                    <input type="range" min="14" max="80" x-model="fontSize" class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer">
+                </div>
+
+                <!-- Line Height -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-slate-500 dark:text-slate-400">
+                        <span>Tinggi Baris</span>
+                        <span class="font-bold text-sky-600 dark:text-sky-400" x-text="lineHeight + 'x'"></span>
+                    </div>
+                    <input type="range" min="0.8" max="2.2" step="0.1" x-model="lineHeight" class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer">
+                </div>
+
+                <!-- Letter Spacing -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-slate-500 dark:text-slate-400">
+                        <span>Jarak Huruf</span>
+                        <span class="font-bold text-sky-600 dark:text-sky-400" x-text="letterSpacing + 'px'"></span>
+                    </div>
+                    <input type="range" min="-2" max="12" step="0.5" x-model="letterSpacing" class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer">
+                </div>
+
+                <!-- Font Weight -->
+                <div class="space-y-1">
+                    <span class="text-slate-500 dark:text-slate-400">Ketebalan</span>
+                    <select x-model="fontWeight" class="w-full py-1.5 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:ring-1 focus:ring-sky-500">
+                        <option value="300">Light (300)</option>
+                        <option value="400">Regular (400)</option>
+                        <option value="600">SemiBold (600)</option>
+                        <option value="700">Bold (700)</option>
+                    </select>
+                </div>
+
+                <!-- Text Color -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-slate-500 dark:text-slate-400">
+                        <span>Warna Teks</span>
+                        <button @click="textColor = ''" class="hover:underline text-[10px] text-slate-400">Reset</button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="color" x-model="customColor" @input="textColor = customColor" class="w-7 h-7 rounded border border-slate-300 dark:border-slate-700 cursor-pointer p-0 bg-transparent">
+                        <div class="flex gap-1.5">
+                            <button @click="textColor = '#0284c7'" class="w-5 h-5 rounded-full bg-sky-600 border border-white dark:border-slate-800"></button>
+                            <button @click="textColor = '#10b981'" class="w-5 h-5 rounded-full bg-emerald-500 border border-white dark:border-slate-800"></button>
+                            <button @click="textColor = '#f43f5e'" class="w-5 h-5 rounded-full bg-rose-500 border border-white dark:border-slate-800"></button>
+                            <button @click="textColor = '#8b5cf6'" class="w-5 h-5 rounded-full bg-violet-500 border border-white dark:border-slate-800"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search & Filters (Google Web Fonts Mode) -->
+            <div x-show="activeTab === 'google'" class="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <span class="block text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Filter & Pencarian</span>
+                
+                <!-- Search Font -->
+                <div class="relative">
+                    <input type="text" 
+                           x-model="searchQuery" 
+                           placeholder="Cari nama font..." 
+                           class="w-full pl-8 pr-7 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-sky-500 text-xs">
+                    <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                    <button x-show="searchQuery.length > 0" @click="searchQuery = ''" class="absolute right-2 top-2 text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Category Filters -->
+                <div class="space-y-1">
+                    <span class="text-slate-500 dark:text-slate-400 text-[11px]">Kategori Font:</span>
+                    <div class="flex flex-wrap gap-1">
+                        <template x-for="cat in categories" :key="cat.id">
+                            <button @click="selectedCategory = cat.id"
+                                    :class="selectedCategory === cat.id ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
+                                    class="px-2.5 py-1 rounded-md text-[11px] transition capitalize">
+                                <span x-text="cat.name"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Favorites Filter Toggle -->
+                <button @click="onlyFavorites = !onlyFavorites" 
+                        :class="onlyFavorites ? 'bg-rose-50 text-rose-600 border-rose-300 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800' : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 hover:bg-slate-200'"
+                        class="w-full py-2 rounded-lg border text-xs font-medium flex items-center justify-center space-x-2 transition">
+                    <i class="fa-solid fa-heart" :class="onlyFavorites ? 'text-rose-500' : 'text-slate-400'"></i>
+                    <span>Tampilkan Favorit Saya</span>
+                    <span x-text="`(${favorites.length})`" class="font-bold"></span>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Sidebar Footer Action -->
+        <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between">
+            <!-- Dark Mode Switcher -->
+            <button @click="darkMode = !darkMode" 
+                    class="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-700 transition flex items-center gap-2 text-xs font-medium">
+                <i x-show="!darkMode" class="fa-solid fa-moon text-sky-600"></i>
+                <i x-show="darkMode" class="fa-solid fa-sun text-amber-400"></i>
+                <span x-text="darkMode ? 'Mode Terang' : 'Mode Gelap'"></span>
+            </button>
+
+            <!-- Reset Button -->
+            <button @click="resetFilters()" 
+                    class="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition text-xs" 
+                    title="Reset Pengaturan">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+        </div>
+    </aside>
+
+    <!-- RIGHT MAIN CONTENT AREA -->
+    <div class="md:pl-80 flex-1 min-h-screen flex flex-col">
+        
+        <!-- Header Toolbar -->
+        <header class="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 sm:px-6 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <!-- Mobile Sidebar Hamburger Toggle Button -->
+                <button @click="sidebarOpen = true" class="md:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                    <i class="fa-solid fa-sliders text-base"></i>
+                </button>
+                
+                <div>
+                    <h2 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <span x-text="activeTab === 'google' ? 'Google Web Fonts' : 'Unicode Fancy Text (Langsung Copied)'"></span>
+                        <span class="text-xs font-normal text-slate-400 hidden sm:inline" 
+                              x-text="activeTab === 'google' ? `(${filteredFonts.length} font)` : `(${unicodeStyles.length} gaya teks)`"></span>
+                    </h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
+                        <span x-show="activeTab === 'google'">Ketik kalimat di sidebar untuk melihat reaksi real-time & salin teks langsung.</span>
+                        <span x-show="activeTab === 'unicode'">Klik tombol "Salin Teks" pada gaya mana saja untuk digunakan di Instagram, WA, TikTok & Game.</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Header Controls: View Grid/List -->
+            <div class="flex items-center gap-2">
+                <div class="flex rounded-lg border border-slate-200 dark:border-slate-700 p-0.5 bg-slate-100 dark:bg-slate-800">
+                    <button @click="viewMode = 'grid'" 
+                            :class="viewMode === 'grid' ? 'bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-slate-400'" 
+                            class="px-2.5 py-1 rounded text-xs transition">
+                        <i class="fa-solid fa-border-all"></i>
+                    </button>
+                    <button @click="viewMode = 'list'" 
+                            :class="viewMode === 'list' ? 'bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-slate-400'" 
+                            class="px-2.5 py-1 rounded text-xs transition">
+                        <i class="fa-solid fa-list"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Display Cards Area -->
+        <main class="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto">
+            
+            <!-- MODE 1: GOOGLE WEB FONTS GRID -->
+            <template x-if="activeTab === 'google'">
+                <div>
+                    <!-- Empty State -->
+                    <div x-show="filteredFonts.length === 0" class="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 text-2xl">
+                            <i class="fa-solid fa-font-slash"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">Tidak ada font ditemukan</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto mt-1">Coba ubah kata kunci pencarian atau batalkan filter favorit.</p>
+                    </div>
+
+                    <!-- Cards Display -->
+                    <div :class="{
+                        'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5': viewMode === 'grid',
+                        'space-y-4': viewMode === 'list'
+                    }">
+                        <template x-for="font in filteredFonts" :key="font.name">
+                            <div class="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-sky-500/50 dark:hover:border-sky-500/50 shadow-sm hover:shadow-md transition duration-200 flex flex-col justify-between overflow-hidden">
+                                
+                                <!-- Card Header -->
+                                <div class="p-3.5 border-b border-slate-100 dark:border-slate-800/80 flex items-start justify-between gap-2 bg-slate-50/50 dark:bg-slate-800/30">
+                                    <div>
+                                        <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm group-hover:text-sky-600 dark:group-hover:text-sky-400 transition" x-text="font.name"></h3>
+                                        <span class="text-[10px] uppercase font-semibold tracking-wider text-slate-400" x-text="font.category"></span>
+                                    </div>
+
+                                    <div class="flex items-center gap-1">
+                                        <!-- Favorite Button -->
+                                        <button @click="toggleFavorite(font.name)" 
+                                                class="p-1.5 rounded-md text-slate-400 hover:text-rose-500 transition"
+                                                :title="isFavorite(font.name) ? 'Hapus favorit' : 'Tambah favorit'">
+                                            <i class="fa-solid fa-heart text-xs" :class="isFavorite(font.name) ? 'text-rose-500' : 'text-slate-300 dark:text-slate-700'"></i>
+                                        </button>
+
+                                        <!-- Embed Code Button -->
+                                        <button @click="openCodeModal(font)" 
+                                                class="p-1.5 rounded-md text-slate-400 hover:text-sky-600 transition"
+                                                title="Ambil Kode CSS Embed">
+                                            <i class="fa-solid fa-code text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Card Text Preview Area -->
+                                <div class="p-4 flex-1 flex flex-col justify-center min-h-[120px] overflow-x-auto">
+                                    <div :style="`
+                                            font-family: '${font.name}', ${font.category}; 
+                                            font-size: ${fontSize}px; 
+                                            line-height: ${lineHeight}; 
+                                            letter-spacing: ${letterSpacing}px; 
+                                            font-weight: ${fontWeight};
+                                            ${textColor ? 'color: ' + textColor + ';' : ''}
+                                         `"
+                                         contenteditable="true"
+                                         spellcheck="false"
+                                         class="outline-none focus:ring-1 focus:ring-sky-300 rounded p-1 transition-all break-words"
+                                         x-text="customText || 'Ketik kata di sidebar untuk dicoba langsung...'">
+                                    </div>
+                                </div>
+
+                                <!-- Card Footer: Quick Copy Text & CSS Rules -->
+                                <div class="px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 text-xs flex items-center justify-between gap-2">
+                                    <!-- Direct Copy Text Button -->
+                                    <button @click="copyText(customText || 'Ketik kata di sidebar untuk dicoba langsung...')" 
+                                            class="px-2.5 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-600 hover:text-white dark:hover:bg-sky-600 text-sky-700 dark:text-sky-300 text-xs font-semibold transition flex items-center gap-1.5">
+                                        <i class="fa-regular fa-copy"></i>
+                                        <span>Salin Katanya</span>
+                                    </button>
+
+                                    <!-- Quick Copy CSS Family Rule -->
+                                    <button @click="copyText(`font-family: '${font.name}', ${font.category};`)" 
+                                            class="text-[11px] font-mono text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition truncate max-w-[150px]"
+                                            title="Salin Aturan CSS Font">
+                                        <i class="fa-solid fa-css3-alt mr-1"></i>
+                                        <span x-text="`'${font.name}'`"></span>
+                                    </button>
+                                </div>
+
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+
+            <!-- MODE 2: UNICODE FANCY TEXT GENERATOR GRID (DIRECT COPY PASTE) -->
+            <template x-if="activeTab === 'unicode'">
+                <div>
+                    <div :class="{
+                        'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5': viewMode === 'grid',
+                        'space-y-4': viewMode === 'list'
+                    }">
+                        <template x-for="item in unicodeStyles" :key="item.name">
+                            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-sky-500/50 shadow-sm hover:shadow-md transition duration-200 flex flex-col justify-between overflow-hidden">
+                                
+                                <!-- Style Header -->
+                                <div class="p-3.5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
+                                    <div class="flex items-center space-x-2">
+                                        <i :class="'fa-solid ' + item.icon" class="text-sky-600 dark:text-sky-400 text-xs"></i>
+                                        <h3 class="font-bold text-slate-800 dark:text-slate-100 text-xs" x-text="item.name"></h3>
+                                    </div>
+                                    <span class="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full" x-text="item.text.length + ' Karakter'"></span>
+                                </div>
+
+                                <!-- Text Preview Area -->
+                                <div class="p-4 flex-1 flex items-center min-h-[90px] overflow-x-auto">
+                                    <div class="text-base sm:text-lg text-slate-800 dark:text-slate-100 font-medium break-words w-full"
+                                         x-text="item.text">
+                                    </div>
+                                </div>
+
+                                <!-- Action Direct Copy Button -->
+                                <div class="p-3 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                                    <button @click="copyText(item.text)" 
+                                            class="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-sky-500/20">
+                                        <i class="fa-regular fa-copy text-sm"></i>
+                                        <span>Salin Teks Bergaya Ini</span>
+                                    </button>
+                                </div>
+
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+        </main>
+    </div>
+
+    <!-- Code Embed Modal -->
+    <div x-show="activeModalFont !== null" 
+         x-transition.opacity
+         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm"
+         style="display: none;">
+        
+        <div @click.away="activeModalFont = null" 
+             class="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+            
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-code text-sky-600 dark:text-sky-400"></i>
+                    <h3 class="font-bold text-slate-800 dark:text-slate-100">Kode Embed CSS Font <span class="text-sky-600 dark:text-sky-400" x-text="activeModalFont?.name"></span></h3>
+                </div>
+                <button @click="activeModalFont = null" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <div class="flex rounded-lg bg-slate-100 dark:bg-slate-800 p-1 text-xs">
+                    <button @click="embedTab = 'link'" :class="embedTab === 'link' ? 'bg-white dark:bg-slate-700 text-sky-600 font-bold shadow-sm' : 'text-slate-500'" class="flex-1 py-1.5 rounded transition">HTML &lt;link&gt;</button>
+                    <button @click="embedTab = 'import'" :class="embedTab === 'import' ? 'bg-white dark:bg-slate-700 text-sky-600 font-bold shadow-sm' : 'text-slate-500'" class="flex-1 py-1.5 rounded transition">CSS @import</button>
+                </div>
+
+                <div class="relative">
+                    <pre class="p-4 bg-slate-950 text-slate-200 rounded-xl text-xs font-mono overflow-x-auto border border-slate-800 leading-relaxed"
+                         x-text="getEmbedCode()"></pre>
+                    <button @click="copyText(getEmbedCode())" 
+                            class="absolute top-3 right-3 px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow">
+                        <i class="fa-regular fa-copy"></i>
+                        <span>Salin Kode</span>
+                    </button>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Aturan CSS (CSS Rules):</label>
+                    <div class="relative">
+                        <pre class="p-3 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-lg text-xs font-mono border border-slate-200 dark:border-slate-700"
+                             x-text="`font-family: '${activeModalFont?.name}', ${activeModalFont?.category};`"></pre>
+                        <button @click="copyText(`font-family: '${activeModalFont?.name}', ${activeModalFont?.category};`)" 
+                                class="absolute top-2 right-2 p-1.5 text-slate-500 hover:text-sky-600 transition">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+                <button @click="activeModalFont = null" class="px-4 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-medium transition">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Toast Notification -->
+    <div x-show="toast.show" 
+         x-transition:enter="transition ease-out duration-300 transform"
+         x-transition:enter-start="opacity-0 translate-y-4"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200 transform"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-4"
+         class="fixed bottom-6 right-6 z-50 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 text-sm font-medium border border-slate-700 dark:border-slate-200"
+         style="display: none;">
+        <i class="fa-solid fa-circle-check text-emerald-400 dark:text-emerald-600 text-base"></i>
+        <span x-text="toast.message"></span>
+    </div>
+
+    <!-- Application Logic JS -->
+    <script>
+        function fontApp() {
+            return {
+                darkMode: false,
+                sidebarOpen: false,
+                activeTab: 'google', // 'google' | 'unicode'
+                customText: 'Tulisan Cantik & Aesthetic 2026',
+                searchQuery: '',
+                selectedCategory: 'all',
+                fontSize: 28,
+                lineHeight: 1.4,
+                letterSpacing: 0,
+                fontWeight: '400',
+                textColor: '',
+                customColor: '#0284c7',
+                viewMode: 'grid',
+                onlyFavorites: false,
+                favorites: JSON.parse(localStorage.getItem('fav_fonts') || '[]'),
+                activeModalFont: null,
+                embedTab: 'link',
+                toast: { show: false, message: '' },
+
+                init() {
+                    // Preload Google Fonts lazily to keep initial page load lighting fast
+                    this.fonts.forEach(font => this.loadGoogleFont(font.name));
+                },
+
+                loadGoogleFont(fontName) {
+                    if (!fontName) return;
+                    const id = `gf-font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
+                    if (!document.getElementById(id)) {
+                        const link = document.createElement('link');
+                        link.id = id;
+                        link.rel = 'stylesheet';
+                        link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName)}:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap`;
+                        document.head.appendChild(link);
+                    }
+                },
+
+                categories: [
+                    { id: 'all', name: 'Semua' },
+                    { id: 'sans-serif', name: 'Sans-Serif' },
+                    { id: 'serif', name: 'Serif' },
+                    { id: 'display', name: 'Display' },
+                    { id: 'monospace', name: 'Monospace' },
+                    { id: 'handwriting', name: 'Handwriting' }
+                ],
+
+                fonts: [
+                    // === SANS-SERIF (29 Fonts) ===
+                    { name: 'Inter', category: 'sans-serif' },
+                    { name: 'Roboto', category: 'sans-serif' },
+                    { name: 'Open Sans', category: 'sans-serif' },
+                    { name: 'Montserrat', category: 'sans-serif' },
+                    { name: 'Poppins', category: 'sans-serif' },
+                    { name: 'Lato', category: 'sans-serif' },
+                    { name: 'Oswald', category: 'sans-serif' },
+                    { name: 'Raleway', category: 'sans-serif' },
+                    { name: 'Nunito', category: 'sans-serif' },
+                    { name: 'Rubik', category: 'sans-serif' },
+                    { name: 'Work Sans', category: 'sans-serif' },
+                    { name: 'Fira Sans', category: 'sans-serif' },
+                    { name: 'Quicksand', category: 'sans-serif' },
+                    { name: 'Outfit', category: 'sans-serif' },
+                    { name: 'Plus Jakarta Sans', category: 'sans-serif' },
+                    { name: 'DM Sans', category: 'sans-serif' },
+                    { name: 'Urbanist', category: 'sans-serif' },
+                    { name: 'Barlow', category: 'sans-serif' },
+                    { name: 'Space Grotesk', category: 'sans-serif' },
+                    { name: 'Cabin', category: 'sans-serif' },
+                    { name: 'PT Sans', category: 'sans-serif' },
+                    { name: 'Ubuntu', category: 'sans-serif' },
+                    { name: 'Syne', category: 'sans-serif' },
+                    { name: 'Lexend', category: 'sans-serif' },
+                    { name: 'Manrope', category: 'sans-serif' },
+                    { name: 'Jost', category: 'sans-serif' },
+                    { name: 'Red Hat Display', category: 'sans-serif' },
+                    { name: 'Kanit', category: 'sans-serif' },
+                    { name: 'Anton', category: 'sans-serif' },
+
+                    // === SERIF (19 Fonts) ===
+                    { name: 'Playfair Display', category: 'serif' },
+                    { name: 'Merriweather', category: 'serif' },
+                    { name: 'Lora', category: 'serif' },
+                    { name: 'PT Serif', category: 'serif' },
+                    { name: 'Cinzel', category: 'serif' },
+                    { name: 'Cormorant Garamond', category: 'serif' },
+                    { name: 'EB Garamond', category: 'serif' },
+                    { name: 'Spectral', category: 'serif' },
+                    { name: 'Libre Baskerville', category: 'serif' },
+                    { name: 'Bodoni Moda', category: 'serif' },
+                    { name: 'Bitter', category: 'serif' },
+                    { name: 'Arvo', category: 'serif' },
+                    { name: 'Crimson Text', category: 'serif' },
+                    { name: 'Prata', category: 'serif' },
+                    { name: 'Domine', category: 'serif' },
+                    { name: 'Noto Serif', category: 'serif' },
+                    { name: 'Young Serif', category: 'serif' },
+                    { name: 'Unna', category: 'serif' },
+                    { name: 'Cardo', category: 'serif' },
+
+                    // === DISPLAY & DECORATIVE (20 Fonts) ===
+                    { name: 'Abril Fatface', category: 'display' },
+                    { name: 'Bebas Neue', category: 'display' },
+                    { name: 'Lobster', category: 'display' },
+                    { name: 'Righteous', category: 'display' },
+                    { name: 'Pacifico', category: 'display' },
+                    { name: 'Alfa Slab One', category: 'display' },
+                    { name: 'Press Start 2P', category: 'display' },
+                    { name: 'Bungee', category: 'display' },
+                    { name: 'Permanent Marker', category: 'display' },
+                    { name: 'Monoton', category: 'display' },
+                    { name: 'Comfortaa', category: 'display' },
+                    { name: 'Shrikhand', category: 'display' },
+                    { name: 'Bangers', category: 'display' },
+                    { name: 'Ultra', category: 'display' },
+                    { name: 'Cinzel Decorative', category: 'display' },
+                    { name: 'Audiowide', category: 'display' },
+                    { name: 'Changa One', category: 'display' },
+                    { name: 'Special Elite', category: 'display' },
+                    { name: 'Creepster', category: 'display' },
+                    { name: 'Faster One', category: 'display' },
+
+                    // === MONOSPACE (14 Fonts) ===
+                    { name: 'Fira Code', category: 'monospace' },
+                    { name: 'JetBrains Mono', category: 'monospace' },
+                    { name: 'Source Code Pro', category: 'monospace' },
+                    { name: 'Space Mono', category: 'monospace' },
+                    { name: 'Inconsolata', category: 'monospace' },
+                    { name: 'Roboto Mono', category: 'monospace' },
+                    { name: 'Share Tech Mono', category: 'monospace' },
+                    { name: 'Courier Prime', category: 'monospace' },
+                    { name: 'IBM Plex Mono', category: 'monospace' },
+                    { name: 'Anonymous Pro', category: 'monospace' },
+                    { name: 'VT323', category: 'monospace' },
+                    { name: 'Major Mono Display', category: 'monospace' },
+                    { name: 'Red Hat Mono', category: 'monospace' },
+                    { name: 'Overpass Mono', category: 'monospace' },
+
+                    // === HANDWRITING & SCRIPT (25 Fonts) ===
+                    { name: 'Dancing Script', category: 'handwriting' },
+                    { name: 'Caveat', category: 'handwriting' },
+                    { name: 'Great Vibes', category: 'handwriting' },
+                    { name: 'Sacramento', category: 'handwriting' },
+                    { name: 'Shadows Into Light', category: 'handwriting' },
+                    { name: 'Satisfy', category: 'handwriting' },
+                    { name: 'Kalam', category: 'handwriting' },
+                    { name: 'Indie Flower', category: 'handwriting' },
+                    { name: 'Cookie', category: 'handwriting' },
+                    { name: 'Yellowtail', category: 'handwriting' },
+                    { name: 'Patrick Hand', category: 'handwriting' },
+                    { name: 'Amatic SC', category: 'handwriting' },
+                    { name: 'Handlee', category: 'handwriting' },
+                    { name: 'Homemade Apple', category: 'handwriting' },
+                    { name: 'Covered By Your Grace', category: 'handwriting' },
+                    { name: 'Allura', category: 'handwriting' },
+                    { name: 'Alex Brush', category: 'handwriting' },
+                    { name: 'Parisienne', category: 'handwriting' },
+                    { name: 'Tangerine', category: 'handwriting' },
+                    { name: 'Bad Script', category: 'handwriting' },
+                    { name: 'Marck Script', category: 'handwriting' },
+                    { name: 'Reenie Beanie', category: 'handwriting' },
+                    { name: 'Gochi Hand', category: 'handwriting' },
+                    { name: 'Rock Salt', category: 'handwriting' }
+                ],
+
+                get filteredFonts() {
+                    return this.fonts.filter(font => {
+                        const matchesCategory = this.selectedCategory === 'all' || font.category === this.selectedCategory;
+                        const matchesSearch = font.name.toLowerCase().includes(this.searchQuery.toLowerCase());
+                        const matchesFavorite = !this.onlyFavorites || this.isFavorite(font.name);
+                        return matchesCategory && matchesSearch && matchesFavorite;
+                    });
+                },
+
+                get unicodeStyles() {
+                    const text = this.customText || 'Tulisan Cantik';
+                    
+                    const mapChars = (str, mapObj) => str.split('').map(c => mapObj[c] || c).join('');
+
+                    const offsetMap = (str, upperStart, lowerStart, digitStart) => {
+                        return str.split('').map(c => {
+                            const code = c.charCodeAt(0);
+                            if (code >= 65 && code <= 90 && upperStart) return String.fromCodePoint(upperStart + (code - 65));
+                            if (code >= 97 && code <= 122 && lowerStart) return String.fromCodePoint(lowerStart + (code - 97));
+                            if (code >= 48 && code <= 57 && digitStart) return String.fromCodePoint(digitStart + (code - 48));
+                            return c;
+                        }).join('');
+                    };
+
+                    const smallCapsMap = {
+                        'a':'ᴀ','b':'ʙ','c':'ᴄ','d':'ᴅ','e':'ᴇ','f':'ꜰ','g':'ɢ','h':'ʜ','i':'ɪ','j':'ᴊ','k':'ᴋ','l':'ʟ','m':'ᴍ','n':'ɴ','o':'ᴏ','p':'ᴘ','q':'q','r':'ʀ','s':'ꜱ','t':'ᴛ','u':'ᴜ','v':'ᴠ','w':'ᴡ','x':'x','y':'ʏ','z':'ᴢ'
+                    };
+
+                    const superMap = {
+                        'a':'ᵃ','b':'ᵇ','c':'ᶜ','d':'ᵈ','e':'ᵉ','f':'ᶠ','g':'ᵍ','h':'ʰ','i':'ⁱ','j':'ʲ','k':'ᵏ','l':'ˡ','m':'ᵐ','n':'ⁿ','o':'ᵒ','p':'ᵖ','r':'ʳ','s':'ˢ','t':'ᵗ','u':'ᵘ','v':'ᵛ','w':'ʷ','x':'ˣ','y':'ʸ','z':'ᶻ',
+                        'A':'ᴬ','B':'ᴮ','D':'ᴰ','E':'ᴱ','G':'ᴳ','H':'ᴴ','I':'ᴵ','J':'ᴶ','K':'ᴷ','L':'ᴸ','M':'ᴹ','N':'ᴺ','O':'ᴼ','P':'ᴾ','R':'ᴿ','T':'ᵀ','U':'ᵁ','W':'ᵂ',
+                        '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','=':'⁼','(':'⁽',')':'⁾'
+                    };
+
+                    const subMap = {
+                        'a':'ₐ','e':'ₑ','h':'ₕ','i':'ᵢ','j':'ⱼ','k':'ₖ','l':'ₗ','m':'ₘ','n':'ₙ','o':'ₒ','p':'ₚ','r':'ᵣ','s':'ₛ','t':'ₜ','u':'ᵤ','v':'ᵥ','x':'ₓ',
+                        '0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','+':'₊','-':'₋','=':'₌','(':'₍',')':'₎'
+                    };
+
+                    const upsideDownMap = {
+                        'a':'ɐ','b':'q','c':'ɔ','d':'p','e':'ǝ','f':'ɟ','g':'ƃ','h':'ɥ','i':'ı','j':'ɾ','k':'ʞ','l':'l','m':'ɯ','n':'u','o':'o','p':'p','q':'b','r':'ɹ','s':'s','t':'ʇ','u':'n','v':'ʌ','w':'ʍ','x':'x','y':'ʎ','z':'z',
+                        'A':'∀','B':'q','C':'Ɔ','D':'p','E':'Ǝ','F':'Ⅎ','G':'⅁','H':'H','I':'I','J':'ſ','K':'ʞ','L':'˥','M':'W','N':'N','O':'O','P':'Ԁ','Q':'Ò','R':'y','S':'S','T':'┴','U':'∩','V':'Λ','W':'M','X':'X','Y':'⅄','Z':'Z',
+                        '0':'0','1':'⇂','2':'ᄅ','3':'Ɛ','4':'ㄣ','5':'ϛ','6':'9','7':'ㄥ','8':'8','9':'6','?':'¿','!':'¡','.':'˙',',':'\'','\'':',','"':'„'
+                    };
+
+                    const circleMap = (str) => {
+                        return str.split('').map(c => {
+                            const code = c.charCodeAt(0);
+                            if (code >= 65 && code <= 90) return String.fromCodePoint(0x24B6 + (code - 65));
+                            if (code >= 97 && code <= 122) return String.fromCodePoint(0x24D0 + (code - 97));
+                            if (code >= 49 && code <= 57) return String.fromCodePoint(0x2460 + (code - 49));
+                            if (code === 48) return '⓪';
+                            return c;
+                        }).join('');
+                    };
+
+                    const darkCircleMap = (str) => {
+                        return str.split('').map(c => {
+                            const code = c.charCodeAt(0);
+                            if (code >= 65 && code <= 90) return String.fromCodePoint(0x1F150 + (code - 65));
+                            if (code >= 97 && code <= 122) return String.fromCodePoint(0x1F150 + (code - 97));
+                            return c;
+                        }).join('');
+                    };
+
+                    const squareMap = (str) => {
+                        return str.split('').map(c => {
+                            const code = c.charCodeAt(0);
+                            if (code >= 65 && code <= 90) return String.fromCodePoint(0x1F130 + (code - 65));
+                            if (code >= 97 && code <= 122) return String.fromCodePoint(0x1F130 + (code - 97));
+                            return c;
+                        }).join('');
+                    };
+
+                    const darkSquareMap = (str) => {
+                        return str.split('').map(c => {
+                            const code = c.charCodeAt(0);
+                            if (code >= 65 && code <= 90) return String.fromCodePoint(0x1F170 + (code - 65));
+                            if (code >= 97 && code <= 122) return String.fromCodePoint(0x1F170 + (code - 97));
+                            return c;
+                        }).join('');
+                    };
+
+                    const fullWidthMap = (str) => {
+                        return str.split('').map(c => {
+                            const code = c.charCodeAt(0);
+                            if (code >= 33 && code <= 126) return String.fromCodePoint(0xFF01 + (code - 33));
+                            if (code === 32) return '  ';
+                            return c;
+                        }).join('');
+                    };
+
+                    const flipText = (str) => {
+                        return str.split('').map(c => upsideDownMap[c] || c).reverse().join('');
+                    };
+
+                    return [
+                        { name: 'Cursive Script Bold 𝓐𝓑𝓒', text: offsetMap(text, 0x1D4D0, 0x1D4EA, 0x1D7CE), icon: 'fa-signature' },
+                        { name: 'Gothic / Blackletter 𝔄𝔅ℭ', text: offsetMap(text, 0x1D504, 0x1D51E, null), icon: 'fa-chess-rook' },
+                        { name: 'Gothic Bold 𝕬𝕭𝕮', text: offsetMap(text, 0x1D56C, 0x1D586, null), icon: 'fa-chess-king' },
+                        { name: 'Double Struck Outline 𝔸𝔹ℂ', text: offsetMap(text, 0x1D538, 0x1D552, 0x1D7D8), icon: 'fa-cube' },
+                        { name: 'Circled Light ⒶⒷⒸ', text: circleMap(text), icon: 'fa-circle-dot' },
+                        { name: 'Dark Circled 🅐🅑🅒', text: darkCircleMap(text), icon: 'fa-circle' },
+                        { name: 'Squared Box 🄰🄱🄲', text: squareMap(text), icon: 'fa-square' },
+                        { name: 'Dark Squared 🅰🅱🅲', text: darkSquareMap(text), icon: 'fa-square-check' },
+                        { name: 'Small Caps ꜱᴍᴀʟʟ ᴄᴀᴘꜱ', text: mapChars(text.toLowerCase(), smallCapsMap), icon: 'fa-text-height' },
+                        { name: 'Bold Serif 𝐁𝐨𝐥𝐝 𝐒𝐞𝐫𝐢𝐟', text: offsetMap(text, 0x1D400, 0x1D41A, 0x1D7CE), icon: 'fa-bold' },
+                        { name: 'Italic Serif 𝑼𝒕𝒂𝒍𝒊𝒄 𝑺𝒆𝒓𝒊𝒇', text: offsetMap(text, 0x1D434, 0x1D44E, null), icon: 'fa-italic' },
+                        { name: 'Bold Italic Serif 𝑩𝒐𝒍𝒅 𝑰𝒕𝒂𝒍𝒊𝒄', text: offsetMap(text, 0x1D468, 0x1D482, null), icon: 'fa-heading' },
+                        { name: 'Bold Sans-Serif 𝗕𝗼𝗹𝗱 𝗦𝗮𝗻𝘀', text: offsetMap(text, 0x1D5A0, 0x1D5BA, 0x1D7EC), icon: 'fa-font' },
+                        { name: 'Italic Sans 𝘐𝘵𝘢𝘭𝘪𝘤 𝘚𝘢𝘯𝘴', text: offsetMap(text, 0x1D608, 0x1D622, null), icon: 'fa-italic' },
+                        { name: 'Bold Italic Sans 𝘽𝙤𝙡𝙙 𝙄𝙩𝙖𝙡𝙞𝙘', text: offsetMap(text, 0x1D63C, 0x1D656, null), icon: 'fa-bold' },
+                        { name: 'Monospace Typewriter 𝚃𝚢𝚙𝚎𝚠𝚛𝚒𝚝𝚎𝚛', text: offsetMap(text, 0x1D670, 0x1D68A, 0x1D7F6), icon: 'fa-terminal' },
+                        { name: 'Fullwidth Vaporwave ＡＥＳＴＨＥＴＩＣ', text: fullWidthMap(text), icon: 'fa-expand' },
+                        { name: 'Superscript ᵀᵉˣᵗ ˢᵘᵖᵉʳ', text: mapChars(text, superMap), icon: 'fa-superscript' },
+                        { name: 'Subscript ₜₑₓₜ ₛᵤb', text: mapChars(text, subMap), icon: 'fa-subscript' },
+                        { name: 'Upside Down Inverted ʇxǝʇ uʍop ǝpısd∩', text: flipText(text), icon: 'fa-arrows-up-down' },
+                        { name: 'Underlined t̲e̲x̲t̲', text: text.split('').join('\u0332') + '\u0332', icon: 'fa-underline' },
+                        { name: 'Double Underlined t̲̲e̲̲x̲̲t̲̲', text: text.split('').join('\u0333') + '\u0333', icon: 'fa-underline' },
+                        { name: 'Strikethrough t̶e̶x̶t̶', text: text.split('').join('\u0336') + '\u0336', icon: 'fa-strikethrough' },
+                        { name: 'Slash Through t̷e̷x̷t̷', text: text.split('').join('\u0337') + '\u0337', icon: 'fa-slash' },
+                        { name: 'Dotted Over ṫėẋṫ', text: text.split('').join('\u0307') + '\u0307', icon: 'fa-ellipsis' },
+                        { name: 'Reverse Backwards txeT', text: text.split('').reverse().join(''), icon: 'fa-clock-rotate-left' },
+                        { name: 'Aesthetic Frame 𓆩♡𓆪', text: `𓆩♡𓆪 ${text} 𓆩♡𓆪`, icon: 'fa-heart' },
+                        { name: 'Sparkle Stars ✨', text: `✧･ﾟ: *✧･ ${text} ･ﾟ:*✧`, icon: 'fa-wand-magic-sparkles' },
+                        { name: 'Royal Crown ꧁༺ ༻꧂', text: `꧁༺ ${text} ༻꧂`, icon: 'fa-crown' },
+                        { name: 'Winged Feathers 𓆩 𓆪', text: `𓆩 ${text} 𓆪`, icon: 'fa-feather' },
+                        { name: 'Diamond Brackets ❖', text: `❖ ${text} ❖`, icon: 'fa-gem' },
+                        { name: 'Cute Heart Frame ღ', text: `ღ ${text} ღ`, icon: 'fa-heart-circle-bolt' },
+                        { name: 'Gamer Cross Swords ⚔️', text: `⚔️ ${text} ⚔️`, icon: 'fa-shield-halved' }
+                    ];
+                },
+
+                isFavorite(fontName) {
+                    return this.favorites.includes(fontName);
+                },
+
+                toggleFavorite(fontName) {
+                    if (this.isFavorite(fontName)) {
+                        this.favorites = this.favorites.filter(name => name !== fontName);
+                    } else {
+                        this.favorites.push(fontName);
+                    }
+                    localStorage.setItem('fav_fonts', JSON.stringify(this.favorites));
+                    this.showToast(this.isFavorite(fontName) ? 'Font ditambahkan ke favorit' : 'Font dihapus dari favorit');
+                },
+
+                resetFilters() {
+                    this.customText = 'Tulisan Cantik & Aesthetic 2026';
+                    this.searchQuery = '';
+                    this.selectedCategory = 'all';
+                    this.fontSize = 28;
+                    this.lineHeight = 1.4;
+                    this.letterSpacing = 0;
+                    this.fontWeight = '400';
+                    this.textColor = '';
+                    this.onlyFavorites = false;
+                    this.showToast('Seluruh pengaturan direset');
+                },
+
+                openCodeModal(font) {
+                    this.activeModalFont = font;
+                    this.embedTab = 'link';
+                },
+
+                getEmbedCode() {
+                    if (!this.activeModalFont) return '';
+                    const encodedName = this.activeModalFont.name.replace(/ /g, '+');
+                    if (this.embedTab === 'link') {
+                        return `<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link href="https://fonts.googleapis.com/css2?family=${encodedName}&display=swap" rel="stylesheet">`;
+                    } else {
+                        return `@import url('https://fonts.googleapis.com/css2?family=${encodedName}&display=swap');`;
+                    }
+                },
+
+                copyText(text) {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    textarea.style.position = 'fixed';
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
+                        this.showToast('Teks berhasil disalin ke Clipboard! 📋');
+                    } catch (err) {
+                        this.showToast('Gagal menyalin teks');
+                    }
+                    document.body.removeChild(textarea);
+                },
+
+                showToast(msg) {
+                    this.toast.message = msg;
+                    this.toast.show = true;
+                    setTimeout(() => {
+                        this.toast.show = false;
+                    }, 2500);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
